@@ -84,40 +84,25 @@ def get_user_by_id():
     else:
         return jsonify({"error": "Database connection failed"}), 500
     
-
-# @app.route('/api/getDataFile', methods=['GET'])
-# def get_datafile_by_id():
-#     user_id = request.args.get('user_id')
-#     conn = get_connection()
-#     if conn:
-#         try:
-#             print(f"Fetching data for user_id: {user_id}")
-#             cur = conn.cursor(cursor_factory=RealDictCursor)
-            
-#             cur.execute("""
-#                 select d.file, d.file_id, d.file_name, u."name"  
-#                     from datafile d 
-#                     inner join users u ON u.user_id = d.user_id 
-#                 WHERE u.user_id = %s
-#             """, (user_id,))
-            
-#             users = cur.fetchall()
-#             for user in users:
-#                 for key, value in user.items():
-#                     if isinstance(value, memoryview): 
-#                         user[key] = base64.b64encode(value.tobytes()).decode('utf-8')  
-#                     elif isinstance(value, bytes): 
-#                         user[key] = base64.b64encode(value).decode('utf-8')
-#             cur.close()
-#             conn.close() 
-#             return jsonify(users), 200
-
-#         except Exception as e:
-#             return jsonify({"error": f"Failed to fetch user: {e}"}), 500
-#     else:
-#         return jsonify({"error": "Database connection failed"}), 500
-
-
+@app.route('/api/data', methods=['GET'])
+def get_data_with_users():
+    conn = get_connection()
+    if conn:
+        try:
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            cur.execute("""
+                SELECT file_name, name 
+                FROM datafile da 
+                JOIN users u ON u.user_id = da.user_id;
+            """)
+            data = cur.fetchall()
+            cur.close()
+            conn.close()
+            return jsonify(data), 200
+        except Exception as e:
+            return jsonify({"error": f"Failed to retrieve data: {e}"}), 500
+    else:
+        return jsonify({"error": "Database connection failed"}), 500
 @app.route('/api/upload', methods=['POST'])
 def upload_file():
     conn = get_connection()
