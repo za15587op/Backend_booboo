@@ -1,12 +1,8 @@
 import base64
-import io
 import os
-import cv2
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import numpy as np
 from connect_db import get_connection
-import psycopg2
 from psycopg2.extras import RealDictCursor
 
 app = Flask(__name__)
@@ -63,27 +59,68 @@ def get_users():
             return jsonify({"error": f"Failed to retrieve users: {e}"}), 500
     else:
         return jsonify({"error": "Database connection failed"}), 500
+    
+    
+# def convert_vector(file):
+#     file_content = base64.b64decode(file['content'])
+#     file_type = file['content_type']
+    
+#     try:
+#         if 'image' in file_type: 
+#             nparr = np.frombuffer(file_content, np.uint8)
+#             img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+#             img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+#             vector = img_gray.flatten()
+            
+#         elif 'pdf' in file_type: 
+#             pdf_file = io.BytesIO(file_content)
+#             doc = fitz.open(stream=pdf_file, filetype="pdf")
+#             text = ""
+#             for page in doc:
+#                 text += page.get_text()
+#             vector = np.array([ord(c) for c in text])
 
-# Get Data with Users
-@app.route('/api/data', methods=['GET'])
-def get_data_with_users():
-    conn = get_connection()
-    if conn:
-        try:
-            cur = conn.cursor(cursor_factory=RealDictCursor)
-            cur.execute("""
-                SELECT file_name, name 
-                FROM datafile da 
-                JOIN users u ON u.user_id = da.user_id;
-            """)
-            data = cur.fetchall()
-            cur.close()
-            conn.close()
-            return jsonify(data), 200
-        except Exception as e:
-            return jsonify({"error": f"Failed to retrieve data: {e}"}), 500
-    else:
-        return jsonify({"error": "Database connection failed"}), 500
+#         return vector
+        
+#     except Exception as e:
+#         print(f"Error converting file: {e}")
+#         return np.frombuffer(file_content, dtype=np.uint8)
+
+
+# @app.route('/api/upload', methods=['POST'])
+# def upload_file():
+#     body = request.get_json()
+#     file = body.get('files')
+#     print(file)
+#     conn = get_connection()
+#     if conn:
+#         try:
+            
+#             vector = convert_vector(file)
+            
+#             vector_binary = io.BytesIO()
+#             np.save(vector_binary, vector)
+#             vector_binary_data = vector_binary.getvalue()
+            
+#             cur = conn.cursor(cursor_factory=RealDictCursor)
+#             cur.execute("""
+#                 INSERT INTO datafile (file_name, file_type, file_vector)
+#                 VALUES (%s, %s, %s, %s)
+#             """, (file.filename, file.content_type, vector_binary_data))
+#             cur.close()
+            
+#             # result = cur.fetchone()
+#             conn.commit()
+            
+#             return jsonify({file}), 200
+            
+#         except Exception as e:
+#             conn.rollback()
+#             return jsonify({'error': f'เกิดข้อผิดพลาดในการประมวลผล: {str(e)}'}), 500
+#         finally:
+#             conn.close()
+#     else:
+#         return jsonify({"error": "Database connection failed"}), 500
 
 # File Upload
 @app.route('/api/upload', methods=['POST'])
@@ -105,12 +142,11 @@ def upload_file():
             cur.close()
             conn.close()
 
-            # Save file locally
             upload_folder = './uploads'
             if not os.path.exists(upload_folder):
                 os.makedirs(upload_folder)
-            file.save(os.path.join(upload_folder, file.filename))
-
+            
+            file.save(f"./uploads/{file.filename}")
             return jsonify({"message": "File uploaded successfully"}), 200
         except Exception as e:
             return jsonify({"error": f"Failed to upload file: {e}"}), 500
