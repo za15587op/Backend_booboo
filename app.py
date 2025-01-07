@@ -142,5 +142,34 @@ def upload_file():
         return jsonify({"error": "Database connection failed"}), 500
     
 
+
+@app.route('/api/getDataFile', methods=['GET'])
+def get_data_with_users():
+    conn = get_connection()
+    if conn:
+        try:
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            cur.execute("""
+                SELECT df.file, df.file_name, u.name 
+                FROM datafile df 
+                JOIN users u ON u.user_id = df.user_id;
+            """)
+            users = cur.fetchall()
+            for user in users:
+                for key, value in user.items():
+                    if isinstance(value, memoryview): 
+                        user[key] = base64.b64encode(value.tobytes()).decode('utf-8')  
+                    elif isinstance(value, bytes): 
+                        user[key] = base64.b64encode(value).decode('utf-8')
+            cur.close()
+            conn.close()
+            return jsonify(users), 200
+        except Exception as e:
+            return jsonify({"error": f"Failed to retrieve data: {e}"}), 500
+    else:
+        return jsonify({"error": "Database connection failed"}), 500
+    
+
+
 if __name__ == '__main__':
     app.run(debug=True)
