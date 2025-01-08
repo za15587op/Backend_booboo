@@ -116,7 +116,7 @@ def get_data_with_users():
         try:
             cur = conn.cursor(cursor_factory=RealDictCursor)
             cur.execute("""
-                SELECT df.file, df.file_name, u.name, df.created_at
+                SELECT df.file_id, df.file, df.file_name, u.name, df.created_at
                 FROM datafile df 
                 JOIN users u ON u.user_id = df.user_id;
             """)
