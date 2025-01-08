@@ -116,7 +116,7 @@ def get_data_with_users():
         try:
             cur = conn.cursor(cursor_factory=RealDictCursor)
             cur.execute("""
-                SELECT df.file_id , df.file_name, u.name 
+                SELECT df.file, df.file_name, u.name, df.created_at
                 FROM datafile df 
                 JOIN users u ON u.user_id = df.user_id;
             """)
@@ -135,28 +135,7 @@ def get_data_with_users():
     else:
         return jsonify({"error": "Database connection failed"}), 500
     
-@app.route('/api/file/<string:file_id>', methods=['DELETE'])
-def delete_file(file_id):
-    conn = get_connection()
-    if not conn:
-        return jsonify({"error": "Database connection failed"}), 500
 
-    try:
-        cur = conn.cursor()
-        cur.execute("DELETE FROM datafile WHERE file_id = %s", (file_id,))
-        conn.commit()
-
-        if cur.rowcount == 0:
-            return jsonify({"error": "File not found"}), 404
-
-        cur.close()
-        conn.close()
-        return jsonify({"message": "File deleted successfully"}), 200
-    except Exception as e:
-        return jsonify({"error": f"Failed to delete file: {e}"}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
-
-
-
