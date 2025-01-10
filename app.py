@@ -4,19 +4,52 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from connect_db import get_connection
 from psycopg2.extras import RealDictCursor
+import requests
+
 
 app = Flask(__name__)
 CORS(app)
 
-@app.route('/api/test_db', methods=['GET'])
-def test_db_connection():
-    conn = get_connection()
-    if conn:
-        return jsonify({"message": "Database connection successful!"}), 200
-    else:
-        return jsonify({"error": "Failed to connect to the database"}), 500
+CLIENT_ID = 'Ov23liifej93fi64Be7x'
+CLIENT_SECRET = '5dd6de46975584e7d5b18221e180f1709291c463'
+
+@app.route('/authenticate', methods=['POST'])
+def authenticate():
+    data = request.json
+    code = data.get('code')
+
+    if not code:
+        return jsonify({'error': 'Code is required'}), 400
+
+    try:
+        token_response = requests.post( 
+            'https://github.com/login/oauth/access_token',
+            headers={'Accept': 'application/json'},
+            data={
+                'client_id': CLIENT_ID,
+                'client_secret': CLIENT_SECRET,
+                'code': code
+            }
+        
+        )
+        token_response.raise_for_status()
+        token_data = token_response.json()
+        access_token = token_data.get('access_token')
+
+        user_response = requests.get(
+            'https://api.github.com/user',
+            headers={'Authorization': f'token {access_token}'}
+        )
+
+        user_response.raise_for_status()
+        user_data = user_response.json()
+
+        return jsonify({'access_token': access_token,'user': user_data})
+
+    except requests.exceptions.RequestException as e:
+        return jsonify({'error': str(e)}), 500
     
-    
+
 @app.route('/api/user', methods=['POST'])
 def user():
   if request.method == 'POST':
@@ -85,6 +118,7 @@ def get_user_by_id():
         return jsonify({"error": "Database connection failed"}), 500
     
 @app.route('/api/upload', methods=['POST'])
+# @authorize
 def upload_file():
     conn = get_connection()
     if conn:
@@ -154,6 +188,30 @@ def delete_file(file_id):
         return jsonify({"message": "File deleted successfully"}), 200
     except Exception as e:
         return jsonify({"error": f"Failed to delete file: {e}"}), 500
+
+    
+@app.route('/api/UpdateRole/<user_id>', methods=['PUT'])
+def UpdateRole(user_id):
+    conn = get_connection()
+    data = request.get_json()
+    user_role = data.get('user_role')
+    if not conn:
+        return jsonify({"error": "Database connection failed"}), 500
+
+    try:
+        cur = conn.cursor()
+        cur.execute("UPDATE users SET user_role = %s WHERE user_id = %s", (user_role, user_id))
+        conn.commit()
+
+        if cur.rowcount == 0:
+            return jsonify({"error": "File not found"}), 404
+
+        cur.close()
+        conn.close()
+        return jsonify({"message": "File update successfully"}), 200
+    except Exception as e:
+        return jsonify({"error": f"Failed to update file: {e}"}), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True)
