@@ -17,6 +17,7 @@ CLIENT_SECRET = '5dd6de46975584e7d5b18221e180f1709291c463'
 def authenticate():
     data = request.json
     code = data.get('code')
+    print(code)
 
     if not code:
         return jsonify({'error': 'Code is required'}), 400
@@ -34,6 +35,7 @@ def authenticate():
         )
         token_response.raise_for_status()
         token_data = token_response.json()
+        print(token_data)
         access_token = token_data.get('access_token')
 
         user_response = requests.get(
@@ -117,13 +119,14 @@ def get_user_by_id():
     else:
         return jsonify({"error": "Database connection failed"}), 500
     
+    
 @app.route('/api/upload', methods=['POST'])
-# @authorize
 def upload_file():
     conn = get_connection()
     if conn:
         try:    
             file = request.files['file']
+            print(file)
             user_id = request.form['user_id']
             print(user_id)
             file_data = file.read()
